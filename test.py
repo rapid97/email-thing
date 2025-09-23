@@ -2,6 +2,8 @@ import threading
 import time
 import imaplib, email
 
+#yahoo: imap.mail.yahoo.com
+#gmail: imap.gmail.com
 mails = [("email id", "app password", "mail imap server"),
          ("email id", "app password", "mail imap server"),
          ("email id", "app password", "mail imap server")]
@@ -111,5 +113,6 @@ if __name__ == "__main__":
     main()
     elapsed = time.perf_counter() - time_start
     print (f"Took {elapsed} seconds")
+
 
 
