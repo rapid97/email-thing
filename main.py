@@ -7,28 +7,28 @@ from timeperf import TimePerf
 #gmail: imap.gmail.com
 
 #email-id, app-password, mail-imap-server, no. of emails, whether to fetch for this email or not
-mails = [("email-id", "app-password", "mail-imap-server", 30, True),
-         ("email-id", "app-password", "mail-imap-server", 30, True),
-         ("email-id", "app-password", "mail-imap-server", 30, True)]
+mails = [["email-id", "app-password", "mail-imap-server", 30, True],
+         ["email-id", "app-password", "mail-imap-server", 30, True],
+         ["email-id", "app-password", "mail-imap-server", 30, True]]
 
 def setup_SSL_server(server):
-    server_timer = TimePerf(name = "server_setup", auto = True)
+    server_timer = TimePerf(name = "server_setup")
     return imaplib.IMAP4_SSL(server)
 
 def authorise_creds(mail, creds):
-    cred_timer = TimePerf(name = f"{creds[0]} authorisation", auto = True)
+    cred_timer = TimePerf(name = f"{creds[0]} authorisation")
     mail.login(creds[0], creds[1])
 
 def select_folder(mail, folder):
-    folder_select_timer = TimePerf(name = "folder selection", auto = True)
+    folder_select_timer = TimePerf(name = "folder selection")
     mail.select(folder)
 
 def search_folder(mail, search_criteria = 'ALL'):
-    mail_searcher_timer = TimePerf(name = "mail searcher", auto = True)
+    mail_searcher_timer = TimePerf(name = "mail searcher")
     return mail.search(None, search_criteria)
 
 def data_to_list(data):
-    split_timer = TimePerf(name = "list splitter", auto = True)
+    split_timer = TimePerf(name = "list splitter")
     return data[0].split()
 
 def create_search_string():
@@ -51,10 +51,10 @@ def get_thread_amount(num):
 #sets up imap server and fetches emails according to the executing thread
 def fetch_group(start, finish, mail_store, creds, correction, num, thread = None):
     store = []                                                      #stores fetched emails locally before merging with main storage
-    mail = imaplib.IMAP4_SSL(creds[2])                              #sets up imap server with host specified in creds[2]
-    mail.login(creds[0], creds[1])                                  #logs into the server
-    mail.select('INBOX')                                            #selects the folder to look for mails in
-    result, data = mail.search(None, 'ALL')                         #searches for specific mail in selected folder
+    mail = setup_SSL_server(creds[2])                         #sets up imap server with host specified in creds[2]
+    authorise_creds(mail, creds)                                  #logs into the server
+    select_folder(mail, 'INBOX')                                            #selects the folder to look for mails in
+    result, data = search_folder(mail, 'ALL')                         #searches for specific mail in selected folder
     mail_ids = data[0].split()                                      #gets individual mail ids in a list
  
     for i in range(start, finish, -1):                              #start and finish of mail ids changes according to executing thread
@@ -121,29 +121,74 @@ def get_mail(creds, num, thread = None):
         
     #return mail_store
 
+def show_active_status():
+    for email in mails:
+        print (f"{email[0]}: {email[4]}")
+    print()
+        
+def is_active(email):
+    if email[4]:
+        print(f"{email[0]} is Active")
+    else:
+        print(f"{email[0]} is Not Active")
+    print()
+    
+def activate_emails():
+    while True:
+        print("Choose emails to activate: ")
+        for n, email in enumerate(mails):
+            print (f'{n+1}:', email[0])
+        choice = int(input("Choice: "))
+        print()
+        if choice == 0:
+            return
+        
+        mails[choice-1][4] = not mails[choice-1][4]
+        is_active(mails[choice-1])
+
 def main():
-    main_timer = TimePerf(name = "Main")
-    email_threads = {}
-    #creating threads for each email id, performant mail limit is like 100 for each email, gmail is messing up kinda
-    for n, creds in enumerate(mails):
-        #print (-(file_group*(n-1))-1, -(file_group*n)-1)
-        if not creds[4]:
-            continue
-        if n == 0:
-            prev = None                                             #if first thread, then no need to wait for any previous threads
-        else:
-            prev = email_threads[n-1]                               #subsequent threads wait for previous threads
+    main_timer = TimePerf(name = "Main", auto = True)
+    run_timer = TimePerf(name = "run")
+    while True:
+        print("MAIN MENU")
+        print("1) Choose emails to activate")
+        print("2) Run program")
+        print("3) Show email active status")
+        choice = int(input("Choice: "))
+        print()
+        
+        if choice == 1:
+            activate_emails()
+        elif choice == 2:
+            run_timer.startTick()
+            email_threads = {}
+            #creating threads for each email id, performant mail limit is like 100 for each email, gmail is messing up kinda
+            n = 0
+            for creds in mails:
+                #print (-(file_group*(n-1))-1, -(file_group*n)-1)
+                if not creds[4]:
+                    continue
+                if n == 0:
+                    prev = None                                             #if first thread, then no need to wait for any previous threads
+                else:
+                    prev = email_threads[n-1]                               #subsequent threads wait for previous threads
 
-        email_threads[n] = threading.Thread(target = get_mail, args = (creds, creds[3], prev))
+                email_threads[n] = threading.Thread(target = get_mail, args = (creds, creds[3], prev))
+                n += 1
 
-    for t in email_threads:
-        email_threads[t].start()
+            for t in email_threads:
+                email_threads[t].start()
 
-    for t in email_threads:
-        email_threads[t].join()
+            for t in email_threads:
+                email_threads[t].join()
 
-    #show_mail(mails[0], 15)
-
+            run_timer.endTick(clear_start_time = False)
+            #show_mail(mails[0], 15)
+        elif choice == 3:
+            show_active_status()
+        elif choice == 0:
+            break
 
 if __name__ == "__main__":
     main()
+
