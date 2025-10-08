@@ -5,18 +5,11 @@ from timeperf import TimePerf
 
 #yahoo: imap.mail.yahoo.com
 #gmail: imap.gmail.com
-mails = [("email id", "app password", "mail imap server", "number of mails"),
-         ("email id", "app password", "mail imap server", "number of mails"),
-         ("email id", "app password", "mail imap server", "number of mails")]
 
-def time_perf(func):
-    def wrapper():
-        time_start = time.perf_counter()
-        func()
-        elapsed = time.perf_counter() - time_start
-        print (f"{func} took {elapsed} seconds")
-
-    return wrapper
+#email-id, app-password, mail-imap-server, no. of emails, whether to fetch for this email or not
+mails = [("email-id", "app-password", "mail-imap-server", 30, True),
+         ("email-id", "app-password", "mail-imap-server", 30, True),
+         ("email-id", "app-password", "mail-imap-server", 30, True)]
 
 def setup_SSL_server(server):
     server_timer = TimePerf(name = "server_setup", auto = True)
@@ -30,13 +23,16 @@ def select_folder(mail, folder):
     folder_select_timer = TimePerf(name = "folder selection", auto = True)
     mail.select(folder)
 
-def search_folder(mail, search_criteria = "ALL"):
+def search_folder(mail, search_criteria = 'ALL'):
     mail_searcher_timer = TimePerf(name = "mail searcher", auto = True)
     return mail.search(None, search_criteria)
 
 def data_to_list(data):
     split_timer = TimePerf(name = "list splitter", auto = True)
     return data[0].split()
+
+def create_search_string():
+    print ("Select option to search for: ")
 
 #returns the number of threads, no. of files for each thread and correction factor
 #correction factor exists to get the correct number of files for even number of threads
@@ -55,25 +51,25 @@ def get_thread_amount(num):
 #sets up imap server and fetches emails according to the executing thread
 def fetch_group(start, finish, mail_store, creds, correction, num, thread = None):
     store = []                                                      #stores fetched emails locally before merging with main storage
-    mail = setup_SSL_server(creds[2])                               #sets up imap server with host specified in creds[2]
-    authorise_creds(mail, creds)                                    #logs into the server
-    select_folder(mail, "INBOX")                                    #selects the folder to look for mails in
-    result, data = search_folder(mail, "ALL")                       #searches for specific mail in selected folder
+    mail = imaplib.IMAP4_SSL(creds[2])                              #sets up imap server with host specified in creds[2]
+    mail.login(creds[0], creds[1])                                  #logs into the server
+    mail.select('INBOX')                                            #selects the folder to look for mails in
+    result, data = mail.search(None, 'ALL')                         #searches for specific mail in selected folder
     mail_ids = data[0].split()                                      #gets individual mail ids in a list
  
     for i in range(start, finish, -1):                              #start and finish of mail ids changes according to executing thread
-        result, msg_data = mail.fetch(mail_ids[i], "(RFC822)")      #get the mail data from given mail id
+        result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')      #get the mail data from given mail id
         #print (f"fetched mail for {creds[0]} with {thread}")
         msg = email.message_from_bytes(msg_data[0][1])              #convert to message from bytes
-        store.append(msg["subject"])
+        store.append(msg['subject'])
 
     #print (finish, "+++", -num + correction)
     if finish == -num + (correction - 1):                           #if last thread for this operation is executing
         for i in range(finish, finish - correction, -1):            #get the last few mails according to correction factor
-            result, msg_data = mail.fetch(mail_ids[i], "(RFC822)")  
+            result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')  
             #print (f"fetched mail for {creds[0]} with {thread}")
             msg = email.message_from_bytes(msg_data[0][1])
-            store.append(msg["subject"])
+            store.append(msg['subject'])
         
     mail.logout()                                                   #logout of server
     
@@ -131,6 +127,8 @@ def main():
     #creating threads for each email id, performant mail limit is like 100 for each email, gmail is messing up kinda
     for n, creds in enumerate(mails):
         #print (-(file_group*(n-1))-1, -(file_group*n)-1)
+        if not creds[4]:
+            continue
         if n == 0:
             prev = None                                             #if first thread, then no need to wait for any previous threads
         else:
@@ -149,5 +147,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
