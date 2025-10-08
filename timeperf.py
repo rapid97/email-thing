@@ -3,9 +3,13 @@ import time
 class TimePerf:
     num = 0
     total_time = time.perf_counter()
-    def __init__(self, name = "Default"):
+    def __init__(self, name = "Default", auto = False):
         self.name = name
-        self.start_time = 0
+        self.auto = auto
+        if auto:
+            self.start_time = time.perf_counter()
+        else:
+            self.start_time = 0
         self.end_time = 0
         TimePerf.num += 1
 
@@ -18,6 +22,9 @@ class TimePerf:
 
     def __del__(self):
         #print (TimePerf.num)
+        if self.auto:
+            self.end_time = time.perf_counter() - self.start_time
+            print(f"Time taken by {self.name}: {self.end_time} seconds")
         TimePerf.num -= 1
         if TimePerf.num == 0:
             TimePerf.total_time = time.perf_counter() - TimePerf.total_time
