@@ -2,14 +2,25 @@ import threading
 import time
 import imaplib, email
 from timeperf import TimePerf
+from email.header import decode_header
 
 #yahoo: imap.mail.yahoo.com
 #gmail: imap.gmail.com
 
 #email-id, app-password, mail-imap-server, no. of emails, whether to fetch for this email or not
-mails = [["email-id", "app-password", "mail-imap-server", 30, True],
-         ["email-id", "app-password", "mail-imap-server", 30, True],
-         ["email-id", "app-password", "mail-imap-server", 30, True]]
+mails = [["email-id", "app-password", "mail-imap-server", 30, True, 'ALL'],
+         ["email-id", "app-password", "mail-imap-server", 30, True, 'ALL'],
+         ["email-id", "app-password", "mail-imap-server", 30, True, 'ALL']]
+
+def decode_header_value(encoded):
+    decoded = decode_header(encoded)
+    msg_parts = []
+    for part, encoding in decoded:
+        if isinstance(part, bytes):
+            msg_parts.append(part.decode(encoding or 'utf-8'))
+        else:
+            msg_parts.append(part)
+    return ''.join(msg_parts)
 
 def setup_SSL_server(server):
     server_timer = TimePerf(name = "server_setup")
@@ -54,22 +65,28 @@ def fetch_group(start, finish, mail_store, creds, correction, num, thread = None
     mail = setup_SSL_server(creds[2])                         #sets up imap server with host specified in creds[2]
     authorise_creds(mail, creds)                                  #logs into the server
     select_folder(mail, 'INBOX')                                            #selects the folder to look for mails in
-    result, data = search_folder(mail, 'ALL')                         #searches for specific mail in selected folder
+    result, data = search_folder(mail, search_criteria = creds[5])                         #searches for specific mail in selected folder
     mail_ids = data[0].split()                                      #gets individual mail ids in a list
  
-    for i in range(start, finish, -1):                              #start and finish of mail ids changes according to executing thread
-        result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')      #get the mail data from given mail id
-        #print (f"fetched mail for {creds[0]} with {thread}")
-        msg = email.message_from_bytes(msg_data[0][1])              #convert to message from bytes
-        store.append(msg['subject'])
-
-    #print (finish, "+++", -num + correction)
-    if finish == -num + (correction - 1):                           #if last thread for this operation is executing
-        for i in range(finish, finish - correction, -1):            #get the last few mails according to correction factor
-            result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')  
+    try:
+        for i in range(start, finish, -1):                              #start and finish of mail ids changes according to executing thread
+            result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')      #get the mail data from given mail id
             #print (f"fetched mail for {creds[0]} with {thread}")
-            msg = email.message_from_bytes(msg_data[0][1])
-            store.append(msg['subject'])
+            msg = email.message_from_bytes(msg_data[0][1])              #convert to message from bytes
+            subject = decode_header_value(msg['Subject'])
+            store.append(subject)
+
+        #print (finish, "+++", -num + correction)
+        if finish == -num + (correction - 1):                           #if last thread for this operation is executing
+            for i in range(finish, finish - correction, -1):            #get the last few mails according to correction factor
+                result, msg_data = mail.fetch(mail_ids[i], '(RFC822)')  
+                #print (f"fetched mail for {creds[0]} with {thread}")
+                msg = email.message_from_bytes(msg_data[0][1])
+                subject = decode_header_value(msg['Subject'])
+                store.append(subject)
+                
+    except IndexError:
+        store.append("No emails matching search criteria found")
         
     mail.logout()                                                   #logout of server
     
@@ -121,6 +138,27 @@ def get_mail(creds, num, thread = None):
         
     #return mail_store
 
+def validate_search_string(string):
+    valid_keywords = ['ALL', 'ANSWERED', 'DELETED', 'DRAFT', 'FLAGGED', 'NEW', 'OLD', 'RECENT', 'SEEN']
+    elements = string.split()
+    
+def set_search_string(mail):
+    search = input("Enter search string: ")
+    mail[5] = search
+    print(f"Set {mail[0]} search criteria to {search}")
+
+def change_search_criteria():
+    while True:
+        print("Choose email to change search criteria of: ")
+        for n, email in enumerate(mails):
+            print (f'{n+1}:', email[0])
+        choice = int(input("Choice: "))
+        print()
+        if choice == 0:
+            return
+
+        set_search_string(mails[choice-1])
+
 def show_active_status():
     for email in mails:
         print (f"{email[0]}: {email[4]}")
@@ -149,11 +187,13 @@ def activate_emails():
 def main():
     main_timer = TimePerf(name = "Main", auto = True)
     run_timer = TimePerf(name = "run")
+
     while True:
         print("MAIN MENU")
         print("1) Choose emails to activate")
         print("2) Run program")
         print("3) Show email active status")
+        print("4) Change Search Criteria")
         choice = int(input("Choice: "))
         print()
         
@@ -172,7 +212,7 @@ def main():
                     prev = None                                             #if first thread, then no need to wait for any previous threads
                 else:
                     prev = email_threads[n-1]                               #subsequent threads wait for previous threads
-
+                
                 email_threads[n] = threading.Thread(target = get_mail, args = (creds, creds[3], prev))
                 n += 1
 
@@ -186,6 +226,8 @@ def main():
             #show_mail(mails[0], 15)
         elif choice == 3:
             show_active_status()
+        elif choice == 4:
+            change_search_criteria()
         elif choice == 0:
             break
 
