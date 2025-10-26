@@ -61,7 +61,9 @@ def clean(text):
 
 def get_html(body, subject):
     folder_name = clean(subject)
- 
+
+    if not os.path.isdir("webpages"):
+        os.mkdir(f"webpages")
     if not os.path.isdir("webpages/" + folder_name):
         os.mkdir("webpages/" + folder_name)
  
