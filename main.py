@@ -165,17 +165,24 @@ def handle_emails_after_fetch():
         try:
             make_line_space(50)
             print("Available mail ids to work on:")
-            for i, eid in enumerate(fetched_mails):
-                print (f"{i+1:<2}: {eid}")
+            for i, email_id in enumerate(mails):
+                print (f"{i+1:<2}: {email_id[0]}")
 
             choice = int(input("\nSelect id to work on (0 to Exit): "))
             if choice == 0:
                 return
+            elif choice < 0 or choice > len(mails):
+                print("\nNo email exists")
+                continue
+            if not mails[choice-1][0] in fetched_mails:
+                print("No mails for this email have been fetched yet")
+                continue
+
             select_specific_email_for_id(mails[choice-1][0])
         except IndexError:
-            print("\nInvalid choice, please select again")
+            print("\nInvalid choice, please select again 1")
         except ValueError:
-            print("\nInvalid choice, please select again")
+            print("\nInvalid choice, please select again 2")
 
 def select_specific_email_for_id(email_id):
     while True:
