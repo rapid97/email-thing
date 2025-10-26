@@ -180,9 +180,9 @@ def handle_emails_after_fetch():
 
             select_specific_email_for_id(mails[choice-1][0])
         except IndexError:
-            print("\nInvalid choice, please select again 1")
+            print("\nInvalid choice, please select again")
         except ValueError:
-            print("\nInvalid choice, please select again 2")
+            print("\nInvalid choice, please select again")
 
 def select_specific_email_for_id(email_id):
     while True:
@@ -409,3 +409,4 @@ def make_line_space(n):
 
 if __name__ == "__main__":
     main()
+
