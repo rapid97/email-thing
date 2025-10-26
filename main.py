@@ -3,7 +3,6 @@ import time
 import os
 import webbrowser
 import imaplib, email
-from timeperf import TimePerf
 from email.header import decode_header
 
 #yahoo: imap.mail.yahoo.com
