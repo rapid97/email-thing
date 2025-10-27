@@ -32,38 +32,38 @@ def get_thread_amount(num):
 
 """ SETUP FUNCTIONS """
 def setup_SSL_server(server):
-    return imaplib.IMAP4_SSL(server)
+    return imaplib.IMAP4_SSL(server)                            #creates server object
 
 def authorise_creds(mail, creds):
-    mail.login(creds[0], creds[1])
+    mail.login(creds[0], creds[1])                              #logs in using email id and pass
 
 def select_folder(mail, folder):
-    mail.select(folder, readonly = True)
+    mail.select(folder, readonly = True)                        #selects which folder to search in
 
 def search_folder(mail, search_criteria = 'ALL'):
-    return mail.search(None, search_criteria)
+    return mail.search(None, search_criteria)                   #searches in that folder according to criteria
 
 """ MESSAGE DECODING """
 def decode_header_value(encoded):
-    decoded = decode_header(encoded)
+    decoded = decode_header(encoded)                            #returns tuple as (decoded part as bytes type, encoding used)
     msg_parts = []
     for part, encoding in decoded:
-        if isinstance(part, bytes):
+        if isinstance(part, bytes):                             #if a decoded part is encountered, then run decode() method using the given encoding
             msg_parts.append(part.decode(encoding or 'utf-8'))
         else:
-            msg_parts.append(part)
-    return ''.join(msg_parts)
+            msg_parts.append(part)                              #if decoded part is not bytes type then append as it is
+    return ''.join(msg_parts)                                   #returns the entire message as one string
 
 """ HTML TYPE HANDLING """
 def clean(text):
-    return "".join(c if c.isalnum() else "_" for c in text)
+    return "".join(c if c.isalnum() else "_" for c in text)     #basically gets a folder name to store its webpage file in
 
 def get_html(body, subject):
     folder_name = clean(subject)
 
-    if not os.path.isdir("webpages"):
+    if not os.path.isdir("webpages"):                           #creates a webpages folder in cwd to store all the HTML type content from mails
         os.mkdir(f"webpages")
-    if not os.path.isdir("webpages/" + folder_name):
+    if not os.path.isdir("webpages/" + folder_name):            #individual folders are created for the webpage of each mail
         os.mkdir("webpages/" + folder_name)
  
     filename = "index.html"
@@ -75,7 +75,7 @@ def get_html(body, subject):
     return filepath
 
 """ PROGRAM OPTION FUNCTIONS """
-def activate_emails():
+def activate_emails():                                          #used to determine which email IDs get their mail fetched on execution
     while True:
         make_line_space(50)
         try:
@@ -92,7 +92,7 @@ def activate_emails():
         except:
             print("\nInvalid choice, please select again")
 
-def show_active_status():
+def show_active_status():                                       #shows whether email IDs are getting their mail fetched or not
     for email in mails:
         print (f"{email[0]}: {email[4]}")
     print()
@@ -104,7 +104,7 @@ def is_active(email):
         print(f"{email[0]} is Not Active")
     print()
             
-def change_search_criteria():
+def change_search_criteria():                                   #used to change search criteria for each email ID or all at once
     search = input("Enter search string: ")
     while True:
         print("Choose email to change search criteria of (0 to Exit): ")
@@ -129,7 +129,7 @@ def show_search_criterias():
         print (f"{email[0]}: {email[5]}")
     print()
 
-def change_number_of_mails():
+def change_number_of_mails():                                   #used to change how many mails will be fetched for each ID (max 30 due to connection limits from threads)
     while True:
         make_line_space(50)
         try:
@@ -160,7 +160,7 @@ def show_number_of_mails():
         print (f"{email[0]}: {email[3]}")
     print()
 
-def handle_emails_after_fetch():
+def handle_emails_after_fetch():                                #handles what to do with each fetched mail after fetching is done for each ID
     while True:
         try:
             make_line_space(50)
@@ -180,11 +180,11 @@ def handle_emails_after_fetch():
 
             select_specific_email_for_id(mails[choice-1][0])
         except IndexError:
-            print("\nInvalid choice, please select again")
+            print("\nInvalid choice, please select again 1")
         except ValueError:
-            print("\nInvalid choice, please select again")
+            print("\nInvalid choice, please select again 2")
 
-def select_specific_email_for_id(email_id):
+def select_specific_email_for_id(email_id):                     #accesses individual mail from pool of fetched mails
     while True:
         try:
             make_line_space(50)
@@ -202,8 +202,8 @@ def select_specific_email_for_id(email_id):
         except ValueError:
             print("\nInvalid choice, please select again")
 
-def show_email_content(email):
-    make_line_space(50)
+def show_email_content(email):                                  #if content is plain text, print as it is, if it's HTML then opens up the webpage through index.html file
+    make_line_space(50)                                         #that was created in the webpages folder in cwd
     if email[2].startswith("webpages"):
         webbrowser.open(email[2])
     else:
@@ -232,28 +232,24 @@ def fetch_group(start, finish, mail_store, creds, correction, num, thread = None
             subject = decode_header_value(msg['Subject'])
             _from = decode_header_value(msg['From'])
 
-            if msg.is_multipart():
+            if msg.is_multipart():                                          #if mail is multipart type then go through each part to handle them individually
                 for part in msg.walk():
-                    content_type = part.get_content_type()
+                    content_type = part.get_content_type()                  
                     content_disposition = str(part.get("Content-Disposition"))
                     try:
-                        body = part.get_payload(decode=True).decode()
+                        body = part.get_payload(decode=True).decode()       #get the body of this part
                     except:
                         pass
                     
-                    if content_type == "text/html":
+                    if content_type == "text/html":                         #if type of content is HTML then gets the filepath to the index.html file for this content
                         body = get_html(body, subject)
-                        
-                    elif content_type == "text/plain":
-                        pass
             else:
-                content_type = msg.get_content_type()
+                content_type = msg.get_content_type()                       #if mail is not multipart then just get body and check content type
                 body = msg.get_payload(decode=True).decode()
                 if content_type == "text/html":
                         body = get_html(body, subject)
-                elif content_type == "text/plain":
-                    pass
-            fetched_mails[creds[0]].append((_from, subject, body))
+
+            fetched_mails[creds[0]].append((_from, subject, body))          #stores this info for use after all mails are fetched like accessing individual mails
             
             store.append((_from, subject))
 
@@ -264,7 +260,7 @@ def fetch_group(start, finish, mail_store, creds, correction, num, thread = None
                 subject = decode_header_value(msg['Subject'])
                 _from = decode_header_value(msg['From'])
                 
-                if msg.is_multipart():
+                if msg.is_multipart():                                      #does the same thing as above just for these last few mails on the last thread
                     for part in msg.walk():
                         content_type = part.get_content_type()
                         content_disposition = str(part.get("Content-Disposition"))
@@ -409,4 +405,3 @@ def make_line_space(n):
 
 if __name__ == "__main__":
     main()
-
