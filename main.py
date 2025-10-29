@@ -74,6 +74,20 @@ def get_html(body, subject):
 
     return filepath
 
+""" DOWNLOADING ATTACHMENTS """
+def download_attachment(part, subject):
+    filename = part.get_filename()
+
+    if filename:
+        folder_name = clean(subject)
+        if not os.path.isdir("attachments"):
+            os.mkdir(f"attachments")
+        if not os.path.isdir("attachments/" + folder_name):
+            os.mkdir("attachments/" + folder_name)
+            filepath = os.path.join("attachments", folder_name, filename)
+            with open(filepath, "wb") as f:
+                f.write(part.get_payload(decode = True))
+
 """ PROGRAM OPTION FUNCTIONS """
 def activate_emails():                                          #used to determine which email IDs get their mail fetched on execution
     while True:
@@ -243,6 +257,9 @@ def fetch_group(start, finish, mail_store, creds, correction, num, thread = None
                     
                     if content_type == "text/html":                         #if type of content is HTML then gets the filepath to the index.html file for this content
                         body = get_html(body, subject)
+                        
+                    if "attachment" in content_disposition:
+                        download_attachment(part, subject)
             else:
                 content_type = msg.get_content_type()                       #if mail is not multipart then just get body and check content type
                 body = msg.get_payload(decode=True).decode()
